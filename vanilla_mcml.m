@@ -54,8 +54,11 @@ photon_data(:,7) = init_wt;
 
 %% Run the monte carlo simulation
 parfor n = 1:N_packet
-    % Initialize step size
     while(1)
+        if(1) % Step size zero
+            % Set new step size
+        end
+        
         if(0) % Hits boundary?
             % Move packet to boundary
             
