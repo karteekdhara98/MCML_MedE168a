@@ -44,7 +44,7 @@ Description of photon_data:
     1:3  (x,y,z)          Cartesian coordinates of photon packet
     4:6  (mu_x,mu_y,mu_z) Direction cosines of photon propagation
     7    W                Weight of photon packet
-    8    NA               0 if photon is propagating, 1 if terminated
+    8    dead             0 if photon is propagating, 1 if terminated
     9    s_               step size
     10   NA               Number of scattering events
 %}
@@ -53,8 +53,37 @@ photon_data(:,6) = 1; % Propagating along positive z direction
 photon_data(:,7) = init_wt;
 
 %% Run the monte carlo simulation
-
+parfor n = 1:N_packet
+    % Initialize step size
+    while(1)
+        if(0) % Hits boundary?
+            % Move packet to boundary
+            
+            % Update step size 
+            
+            % Transmit/reflect
+            
+            % Record reflectance
+            
+        else
+            % Move packet to new position
+            
+            % Absorb part of the weight
+            
+            % Scatter
+        end
+        
+        if(1) % Photon alive & Weight large enough
+            continue;
+        else
+            % Run Russian Roulette
+            if(1) % Roulette unsuccessful
+                break;
+            else % Roulette successful
+                continue;
+            end
+        end
+    end
+end
 %% Output recorded quantities
-
-%% Supporting functions
 
