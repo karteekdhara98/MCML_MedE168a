@@ -29,13 +29,16 @@ verbose     = false; % Flag for printing output
 %% Initialize parameters for monte carlo
 % Details of photon packets
 init_wt     = 1e6; % Initial weight of packet
-N_packet    = 1%1e2; % Number of photon packets
+N_packet    = 1;%1e2; % Number of photon packets
 th_wt       = 1e-4; % Weight threshold below which a photon packet is dead
+
+russ_m = 10; % Russian roulette parameter
 
 % Computational grid for recording output
 dz          = lambda/10; % Grid size along z
 dr          = lambda/10; % Grid size along r
 d_alpha     = pi/180; % Grid size along alpha (angle)
+
 % TBD: Define mesh
 
 %% Photon packet structure
@@ -59,10 +62,10 @@ for n = 1:N_packet
     photon = photon_data(n,:);
     
     % While the packet is not dead
-    while( photon(1,8)==0 )
-        if(1) % Step size zero
+    while(1)
+        if(photon(1,9) == 0) % Step size zero
             % Set new step size
-            s_ = -log(rand); %%%%% temporary line to verify scatter part
+            photon(1,9) = -log(rand); %%%%% temporary line to verify scatter part
         end
         
         if(0) % Hits boundary?
@@ -76,10 +79,10 @@ for n = 1:N_packet
             
         else
             % Move packet to new position
-            photon(1,1:3) = photon(1,1:3) + s_ * photon(1,4:6);
+            photon(1,1:3) = photon(1,1:3) + photon(1,9) * photon(1,4:6);
             
             % Absorb part of the weight
-            photon(1,7) = photon(1,7)*(mu_a/mu_t);
+            photon(1,7) = photon(1,7)*(1 - mu_a/mu_t);
             
             % Scatter
             if g == 0
@@ -106,18 +109,23 @@ for n = 1:N_packet
             scatter3(photon(1,1),photon(1,2),photon(1,3)); 
             quiver3(photon(1,1),photon(1,2),photon(1,3),photon(1,4),photon(1,5),photon(1,6));
             drawnow;
-            pause;
+            pause(1);
             %%%%%
             
         end
         
-        if(photon(1,7) > th_wt) % Photon alive & Weight large enough
+        if ((photon(1,8) == 0)&&(photon(1,7) > th_wt)) % Photon alive & Weight large enough
             continue;
-        else
+        elseif (photon(1,8) == 1) % Photon dead
+            break;
+        else % Photon alive, but weight below threshold
             % Run Russian Roulette
-            if(1) % Roulette unsuccessful
+            if(rand > 1/russ_m) % Roulette unsuccessful
+                photon(1,7) = 0; % Make photon weight zero  
+                photon(1,8) = 0; % and kill it
                 break;
             else % Roulette successful
+                photon(1,7) = russ_m*photon(1,7); % Make photon weight m times
                 continue;
             end
         end
