@@ -28,7 +28,7 @@ verbose     = false; % Flag for printing output
 %% Initialize parameters for monte carlo
 % Details of photon packets
 init_wt     = 1e6; % Initial weight of packet
-N_packet    = 1e2; % Number of photon packets
+N_packet    = 1%1e2; % Number of photon packets
 th_wt       = 1e-4; % Weight threshold below which a photon packet is dead
 
 % Computational grid for recording output
@@ -53,10 +53,15 @@ photon_data(:,6) = 1; % Propagating along positive z direction
 photon_data(:,7) = init_wt;
 
 %% Run the monte carlo simulation
-parfor n = 1:N_packet
-    while(1)
+for n = 1:N_packet
+    % For parfor to be able to split
+    photon = photon_data(n,:);
+    
+    % While the packet is not dead
+    while( photon(1,8)==0 )
         if(1) % Step size zero
             % Set new step size
+            s_ = -log(rand); %%%%% temporary line to verify scatter part
         end
         
         if(0) % Hits boundary?
@@ -70,10 +75,37 @@ parfor n = 1:N_packet
             
         else
             % Move packet to new position
+            photon(1,1:3) = photon(1,1:3) + s_ * photon(1,4:6);
             
             % Absorb part of the weight
             
             % Scatter
+            if g == 0
+                theta = acos(2*rand-1);
+            else
+                theta = acos( (1+g^2-((1-g^2)./(1-g+2*g*rand)).^2)/(2*g) );
+            end
+            phi = 2*pi*rand;
+                 
+            if abs(photon(1,6)) > 0.99999
+                mu_prime(1,1) = sin(theta)*cos(phi);
+                mu_prime(1,2) = sin(theta)*sin(phi);
+                mu_prime(1,3) = sign(photon(1,6))*cos(theta);
+            else
+                mu_prime(1,1) = sin(theta)*(photon(1,4)*photon(1,6)*cos(phi) - photon(1,5)*sin(phi) )/sqrt(1-photon(1,6)^2) + photon(1,4)*cos(theta);
+                mu_prime(1,2) = sin(theta)*(photon(1,5)*photon(1,6)*cos(phi) + photon(1,4)*sin(phi) )/sqrt(1-photon(1,6)^2) + photon(1,5)*cos(theta);
+                mu_prime(1,3) = -sqrt(1-photon(1,6)^2)*sin(theta)*cos(phi) + photon(1,6)*cos(theta);
+            end
+            photon(1,4:6) = mu_prime;
+            
+            %%%%% temporary lines to verify scatter part
+            figure(1); hold on;
+            scatter3(photon(1,1),photon(1,2),photon(1,3)); 
+            quiver3(photon(1,1),photon(1,2),photon(1,3),photon(1,4),photon(1,5),photon(1,6));
+            drawnow;
+            pause;
+            %%%%%
+            
         end
         
         if(1) % Photon alive & Weight large enough
@@ -87,6 +119,6 @@ parfor n = 1:N_packet
             end
         end
     end
+    photon_data(n,:) = photon;
 end
 %% Output recorded quantities
-
