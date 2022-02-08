@@ -19,6 +19,7 @@ c           = 299792458; % m/s, speed of light in vacuum
 n_rel       = 1.33; % Relative refractive index
 mu_a        = 0.1; % 1/cm, absorption coefficient
 mu_s        = 100; % 1/cm, scattering coefficient
+mu_t        = mu_a + mu_s;
 g           = 0.9; % Scattering anisotropy
 
 % Output flags
@@ -78,6 +79,7 @@ for n = 1:N_packet
             photon(1,1:3) = photon(1,1:3) + s_ * photon(1,4:6);
             
             % Absorb part of the weight
+            photon(1,7) = photon(1,7)*(mu_a/mu_t);
             
             % Scatter
             if g == 0
@@ -87,6 +89,7 @@ for n = 1:N_packet
             end
             phi = 2*pi*rand;
                  
+            mu_prime = zeros(1,3);
             if abs(photon(1,6)) > 0.99999
                 mu_prime(1,1) = sin(theta)*cos(phi);
                 mu_prime(1,2) = sin(theta)*sin(phi);
@@ -108,7 +111,7 @@ for n = 1:N_packet
             
         end
         
-        if(1) % Photon alive & Weight large enough
+        if(photon(1,7) > th_wt) % Photon alive & Weight large enough
             continue;
         else
             % Run Russian Roulette
