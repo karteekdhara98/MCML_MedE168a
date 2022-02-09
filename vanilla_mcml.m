@@ -30,7 +30,7 @@ verbose     = false; % Flag for printing output
 %% Initialize parameters for monte carlo
 % Details of photon packets
 init_wt     = 1e6; % Initial weight of packet
-N_packet    = 1e5; % Number of photon packets
+N_packet    = 1e3; % Number of photon packets
 th_wt       = 1e-4; % Weight threshold below which a photon packet is dead
 
 russ_m = 10; % Russian roulette parameter
