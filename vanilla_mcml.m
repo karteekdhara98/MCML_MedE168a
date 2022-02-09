@@ -29,8 +29,8 @@ verbose     = false; % Flag for printing output
 
 %% Initialize parameters for monte carlo
 % Details of photon packets
-init_wt     = 1%1e6; % Initial weight of packet
-N_packet    = 1e3; % Number of photon packets
+init_wt     = 1e6; % Initial weight of packet
+N_packet    = 1e5; % Number of photon packets
 th_wt       = 1e-4; % Weight threshold below which a photon packet is dead
 
 russ_m = 10; % Russian roulette parameter
@@ -42,7 +42,7 @@ dalpha      = pi/180; % Grid size along alpha (angle)
 
 % TBD: Define mesh
 Nz = 200;
-Nr = 100;
+Nr = 10;
 z = ([0:Nz-1]+1/2)*dz;
 r = (([0:Nr-1]+1/2)+1/12./([0:Nr-1]+1/2))*dr;
 
@@ -101,16 +101,18 @@ parfor n = 1:N_packet
             alpha_packet = atan2(photon(1,2),photon(1,1));
             alpha_packet(alpha_packet<0) = alpha_packet(alpha_packet<0) + 2*pi;
             [~,i_alpha] = min(abs(alpha_packet-alpha));
-            R_ralpha_temp(i_r,i_alpha) = R_ralpha_temp(i_r,i_alpha) + photon(1,7)*(1-mu_a/mu_t);
-            photon(1,7) = photon(1,7)*(mu_a/mu_t);
+            R_ralpha_temp(i_r,i_alpha) = R_ralpha_temp(i_r,i_alpha) + photon(1,7);
             
         else
             % Move packet to new position
             photon(1,1:3) = photon(1,1:3) + photon(1,9)/mu_t * photon(1,4:6);
+            photon(1,9) = 0;
+            %%%%% Temporary placeholder for boundary part
             if photon(1,3) < 0
                 photon(1,7) = 0; % Make photon weight zero  
                 photon(1,8) = 0; % and kill it
             end
+            %%%%%
             
             % Absorb part of the weight
             [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
@@ -142,9 +144,9 @@ parfor n = 1:N_packet
 %             %%%%% temporary lines to verify scatter part
 %             figure(1); hold on;
 %             scatter3(photon(1,1),photon(1,2),photon(1,3)); 
-%             quiver3(photon(1,1),photon(1,2),photon(1,3),photon(1,4),photon(1,5),photon(1,6));
+%             quiver3(photon(1,1),photon(1,2),photon(1,3),photon(1,4)/mu_t,photon(1,5)/mu_t,photon(1,6)/mu_t);
 %             drawnow;
-%             pause(1);
+%             pause(0.01);
 %             %%%%%
             
         end
