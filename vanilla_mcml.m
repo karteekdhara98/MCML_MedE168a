@@ -12,15 +12,16 @@ clc
 
 %% Define global variables
 % Properties of incident light
-lambda      = 400; % nm, Wavelength of incident light
-c           = 299792458; % m/s, speed of light in vacuum
+lambda      = 400e-7; % cm, Wavelength of incident light
+c           = 299792458e2; % cm/s, speed of light in vacuum
 
 % Scattering medium properties
-n_rel       = 1.33; % Relative refractive index
+n_rel       = 1%1.33; % Relative refractive index
 mu_a        = 0.1; % 1/cm, absorption coefficient
-mu_s        = 100; % 1/cm, scattering coefficient
+mu_s        = 100; % 1/cm, absorption coefficient
 mu_t        = mu_a + mu_s;
 g           = 0.9; % Scattering anisotropy
+l_t_prime   = 1/(mu_a+mu_s*(1-g)); % Transport mean free path
 
 % Output flags
 show_vis    = false; % Flag for visualization (plots/figures)
@@ -28,18 +29,31 @@ verbose     = false; % Flag for printing output
 
 %% Initialize parameters for monte carlo
 % Details of photon packets
-init_wt     = 1e6; % Initial weight of packet
-N_packet    = 1;%1e2; % Number of photon packets
+init_wt     = 1%1e6; % Initial weight of packet
+N_packet    = 1e3; % Number of photon packets
 th_wt       = 1e-4; % Weight threshold below which a photon packet is dead
 
 russ_m = 10; % Russian roulette parameter
 
 % Computational grid for recording output
-dz          = lambda/10; % Grid size along z
-dr          = lambda/10; % Grid size along r
-d_alpha     = pi/180; % Grid size along alpha (angle)
+dz          = 0.005%10*lambda/10; % (cm) Grid size along z
+dr          = 0.005%lambda/10; % (cm) Grid size along r
+dalpha      = pi/180; % Grid size along alpha (angle)
 
 % TBD: Define mesh
+Nz = 200;
+Nr = 100;
+z = ([0:Nz-1]+1/2)*dz;
+r = (([0:Nr-1]+1/2)+1/12./([0:Nr-1]+1/2))*dr;
+
+Nalpha = 360;
+alpha = ([0:Nalpha-1]+1/2)*dalpha + (1-dalpha*cot(dalpha/2)/2)*cot(([0:Nalpha-1]+1/2)*dalpha);
+
+Da = 2*pi*([0:Nr-1]+1/2)*dr^2;
+DOmega = 4*pi*sin(([0:Nalpha-1]+1/2)*dalpha)*sin(dalpha/2);
+
+A_rz = zeros(Nr,Nz);
+R_ralpha = zeros(Nr,Nalpha);
 
 %% Photon packet structure
 %{
@@ -55,11 +69,13 @@ Description of photon_data:
 photon_data = zeros(N_packet, 10);
 photon_data(:,6) = 1; % Propagating along positive z direction
 photon_data(:,7) = init_wt;
-
+tic
 %% Run the monte carlo simulation
-for n = 1:N_packet
+parfor n = 1:N_packet
     % For parfor to be able to split
     photon = photon_data(n,:);
+    A_rz_temp = zeros(Nr,Nz);
+    R_ralpha_temp = zeros(Nr,Nalpha);
     
     % While the packet is not dead
     while(1)
@@ -68,23 +84,42 @@ for n = 1:N_packet
             photon(1,9) = -log(rand); %%%%% temporary line to verify scatter part
         end
         
-        if(0) % Hits boundary?
-            % Move packet to boundary
+        % Calculate the distancs d_b to boundary using 3.32
+        if(0) % Hits boundary? Use 3.33 to see if it will hit the boundary
+            % Move packet to boundary, similar to the line in else but
+            % with d_b instead of s_/mu_t
             
-            % Update step size 
+            % Update step size, reduce s_ by d_b*mu_t
             
-            % Transmit/reflect
+            % Transmit/reflect, calculate R with 3.36. Use rand to
+            % determine if it will reflect or transmit 
             
-            % Record reflectance
+            
+            % If reflects back into medium do nothing. 
+            % If it transmits to z<0 record reflectance.
+            [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
+            alpha_packet = atan2(photon(1,2),photon(1,1));
+            alpha_packet(alpha_packet<0) = alpha_packet(alpha_packet<0) + 2*pi;
+            [~,i_alpha] = min(abs(alpha_packet-alpha));
+            R_ralpha_temp(i_r,i_alpha) = R_ralpha_temp(i_r,i_alpha) + photon(1,7)*(1-mu_a/mu_t);
+            photon(1,7) = photon(1,7)*(mu_a/mu_t);
             
         else
             % Move packet to new position
-            photon(1,1:3) = photon(1,1:3) + photon(1,9) * photon(1,4:6);
+            photon(1,1:3) = photon(1,1:3) + photon(1,9)/mu_t * photon(1,4:6);
+            if photon(1,3) < 0
+                photon(1,7) = 0; % Make photon weight zero  
+                photon(1,8) = 0; % and kill it
+            end
             
             % Absorb part of the weight
-            photon(1,7) = photon(1,7)*(1 - mu_a/mu_t);
+            [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
+            [~,i_z] = min(abs(photon(1,3)-z));
+            A_rz_temp(i_r,i_z) = A_rz_temp(i_r,i_z) + photon(1,7)*(mu_a/mu_t);
+            photon(1,7) = photon(1,7)*(1-mu_a/mu_t);
             
             % Scatter
+            photon(1,10) = photon(1,10) + 1;
             if g == 0
                 theta = acos(2*rand-1);
             else
@@ -104,13 +139,13 @@ for n = 1:N_packet
             end
             photon(1,4:6) = mu_prime;
             
-            %%%%% temporary lines to verify scatter part
-            figure(1); hold on;
-            scatter3(photon(1,1),photon(1,2),photon(1,3)); 
-            quiver3(photon(1,1),photon(1,2),photon(1,3),photon(1,4),photon(1,5),photon(1,6));
-            drawnow;
-            pause(1);
-            %%%%%
+%             %%%%% temporary lines to verify scatter part
+%             figure(1); hold on;
+%             scatter3(photon(1,1),photon(1,2),photon(1,3)); 
+%             quiver3(photon(1,1),photon(1,2),photon(1,3),photon(1,4),photon(1,5),photon(1,6));
+%             drawnow;
+%             pause(1);
+%             %%%%%
             
         end
         
@@ -130,6 +165,36 @@ for n = 1:N_packet
             end
         end
     end
+    A_rz = A_rz + A_rz_temp;
+    R_ralpha = R_ralpha + R_ralpha_temp;
     photon_data(n,:) = photon;
 end
 %% Output recorded quantities
+
+toc
+
+A_z = sum(A_rz,1);
+A = sum(A_rz,[1,2]);
+A_rz = A_rz./(N_packet*Da'*dz);
+A_z = A_z/(N_packet*dz);
+A = A/N_packet;
+
+
+R_alpha = sum(R_ralpha,1);
+R_r = sum(R_ralpha,2);
+R = sum(R_ralpha,[1,2]);
+A = sum(A_rz,[1,2]);
+R_ralpha = R_ralpha./(N_packet*Da'.*DOmega.*cos(alpha));
+R_alpha = R_alpha./(N_packet*DOmega);
+R_r = R_r./(N_packet*Da');
+R = R/N_packet;
+
+F_z = A_z / mu_a;
+
+figure;
+semilogy(z,F_z);
+xlabel('z (cm)'); ylabel('Fluence'); 
+hold on;
+xline(l_t_prime,'--');
+
+% imagesc(log(A_rz));
