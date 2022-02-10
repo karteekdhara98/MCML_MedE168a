@@ -1,4 +1,4 @@
-clear all
+% clear all
 close all
 clc
 
@@ -31,13 +31,13 @@ verbose     = false; % Flag for printing output
 % Details of photon packets
 init_wt     = 1e0; % Initial weight of packet
 N_packet    = 5000; % Number of photon packets
-th_wt       = 1e-10; % Weight threshold below which a photon packet is dead
+th_wt       = 1e-4; % Weight threshold below which a photon packet is dead
 
 russ_m = 10; % Russian roulette parameter
 
 % Computational grid for recording output
-dz          = 0.005%10*lambda/10; % (cm) Grid size along z
-dr          = 0.005%lambda/10; % (cm) Grid size along r
+dz          = 0.005;%10*lambda/10; % (cm) Grid size along z
+dr          = 0.005;%lambda/10; % (cm) Grid size along r
 dalpha      = pi/180; % Grid size along alpha (angle)
 
 % TBD: Define mesh
@@ -46,7 +46,7 @@ Nr = 10;
 z = ([0:Nz-1]+1/2)*dz;
 r = (([0:Nr-1]+1/2)+1/12./([0:Nr-1]+1/2))*dr;
 
-Nalpha = 360;
+Nalpha = 90;
 alpha = ([0:Nalpha-1]+1/2)*dalpha + (1-dalpha*cot(dalpha/2)/2)*cot(([0:Nalpha-1]+1/2)*dalpha);
 
 Da = 2*pi*([0:Nr-1]+1/2)*dr^2;
@@ -105,12 +105,12 @@ for n = 1:N_packet
             if alpha_i >= asin(1/n_rel)
                 R_i = 1;
             else
-                alpha_t = asin(sin(photon(1,6))*n_rel);
+                alpha_t = asin(sin(alpha_i)*n_rel);
                 R_i = ((sin(alpha_i-alpha_t))^2/(sin(alpha_i+alpha_t))^2 + (tan(alpha_i-alpha_t))^2/(tan(alpha_i+alpha_t))^2)/2;
             end
             
             % If reflects back into medium reverse direction. 
-            if rand < R_i
+            if rand <= R_i
                 photon(1,6) = -photon(1,6);
             else
                 % If it transmits to z<0 record reflectance.
@@ -132,12 +132,6 @@ for n = 1:N_packet
             % Move packet to new position
             photon(1,1:3) = photon(1,1:3) + photon(1,9)/mu_t * photon(1,4:6);
             photon(1,9) = 0;
-%             %%%% Temporary placeholder for boundary part
-%             if photon(1,3) < 0
-%                 photon(1,7) = 0; % Make photon weight zero  
-%                 photon(1,8) = 0; % and kill it
-%             end
-%             %%%%
             
             % Absorb part of the weight
             [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
@@ -176,9 +170,10 @@ for n = 1:N_packet
             
         end
         
+        
         if ((photon(1,8) == 0)&&(photon(1,7) > th_wt)) % Photon alive & Weight large enough
             continue;
-        elseif (photon(1,8) == 1) % Photon dead
+        elseif (photon(1,8) == 1)  % Photon dead
             break;
         else % Photon alive, but weight below threshold
             % Run Russian Roulette
@@ -215,14 +210,14 @@ R_alpha = R_alpha./(N_packet*DOmega);
 R_r = R_r./(N_packet*Da');
 R = R/N_packet;
 
-R = R*(1-((n_rel-1)/(n_rel+1))^2) + ((n_rel-1)/(n_rel+1))^2
+R = R*(1-((n_rel-1)/(n_rel+1))^2) + ((n_rel-1)/(n_rel+1))^2;
 
 F_z = A_z / mu_a;
 
-figure;
-semilogy(z,F_z);
-xlabel('z (cm)'); ylabel('Fluence'); 
-hold on;
-xline(l_t_prime,'--');
+% figure;
+% semilogy(z,F_z);
+% xlabel('z (cm)'); ylabel('Fluence'); 
+% hold on;
+% xline(l_t_prime,'--');
 
 % imagesc(log(A_rz));
