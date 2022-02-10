@@ -16,11 +16,11 @@ lambda      = 400e-7; % cm, Wavelength of incident light
 c           = 299792458e2; % cm/s, speed of light in vacuum
 
 % Scattering medium properties
-n_rel       = 1.5; % Relative refractive index
-mu_a        = 10; % 1/cm, absorption coefficient
-mu_s        = 90; % 1/cm, absorption coefficient
+n_rel       = 1.37; % Relative refractive index
+mu_a        = 0.1; % 1/cm, absorption coefficient
+mu_s        = 100; % 1/cm, absorption coefficient
 mu_t        = mu_a + mu_s;
-g           = 0; % Scattering anisotropy
+g           = 0.9; % Scattering anisotropy
 l_t_prime   = 1/(mu_a+mu_s*(1-g)); % Transport mean free path
 
 % Output flags
@@ -30,7 +30,7 @@ verbose     = false; % Flag for printing output
 %% Initialize parameters for monte carlo
 % Details of photon packets
 init_wt     = 1e0; % Initial weight of packet
-N_packet    = 5000; % Number of photon packets
+N_packet    = 1e5; % Number of photon packets
 th_wt       = 1e-4; % Weight threshold below which a photon packet is dead
 
 russ_m = 10; % Russian roulette parameter
@@ -71,7 +71,7 @@ photon_data(:,6) = 1; % Propagating along positive z direction
 photon_data(:,7) = init_wt;
 tic
 %% Run the monte carlo simulation
-for n = 1:N_packet
+parfor n = 1:N_packet
     % For parfor to be able to split
     photon = photon_data(n,:);
     A_rz_temp = zeros(Nr,Nz);
