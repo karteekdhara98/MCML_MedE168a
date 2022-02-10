@@ -16,7 +16,7 @@ lambda      = 400e-7; % cm, Wavelength of incident light
 c           = 299792458e2; % cm/s, speed of light in vacuum
 
 % Scattering medium properties
-n_rel       = 1.37; % Relative refractive index
+n_rel       = 1; % Relative refractive index
 mu_a        = 0.1; % 1/cm, absorption coefficient
 mu_s        = 100; % 1/cm, absorption coefficient
 mu_t        = mu_a + mu_s;
@@ -199,7 +199,7 @@ A_z = sum(A_rz,1);
 A = sum(A_rz,[1,2]);
 A_rz = A_rz./(N_packet*Da'*dz);
 A_z = A_z/(N_packet*dz);
-A = A/N_packet;
+A = (A/N_packet) *(1-((n_rel-1)/(n_rel+1))^2);
 
 
 R_alpha = sum(R_ralpha,1);
@@ -210,6 +210,7 @@ R_alpha = R_alpha./(N_packet*DOmega);
 R_r = R_r./(N_packet*Da');
 R = R/N_packet;
 
+R_diff = R;
 R = R*(1-((n_rel-1)/(n_rel+1))^2) + ((n_rel-1)/(n_rel+1))^2;
 
 F_z = A_z / mu_a;
