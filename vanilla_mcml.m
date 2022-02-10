@@ -16,11 +16,11 @@ lambda      = 400e-7; % cm, Wavelength of incident light
 c           = 299792458e2; % cm/s, speed of light in vacuum
 
 % Scattering medium properties
-n_rel       = 1%1.33; % Relative refractive index
-mu_a        = 0.1; % 1/cm, absorption coefficient
-mu_s        = 100; % 1/cm, absorption coefficient
+n_rel       = 1.5; % Relative refractive index
+mu_a        = 10; % 1/cm, absorption coefficient
+mu_s        = 90; % 1/cm, absorption coefficient
 mu_t        = mu_a + mu_s;
-g           = 0.9; % Scattering anisotropy
+g           = 0; % Scattering anisotropy
 l_t_prime   = 1/(mu_a+mu_s*(1-g)); % Transport mean free path
 
 % Output flags
@@ -29,9 +29,9 @@ verbose     = false; % Flag for printing output
 
 %% Initialize parameters for monte carlo
 % Details of photon packets
-init_wt     = 1e6; % Initial weight of packet
-N_packet    = 1e3; % Number of photon packets
-th_wt       = 1e-4; % Weight threshold below which a photon packet is dead
+init_wt     = 1e0; % Initial weight of packet
+N_packet    = 5000; % Number of photon packets
+th_wt       = 1e-10; % Weight threshold below which a photon packet is dead
 
 russ_m = 10; % Russian roulette parameter
 
@@ -71,7 +71,7 @@ photon_data(:,6) = 1; % Propagating along positive z direction
 photon_data(:,7) = init_wt;
 tic
 %% Run the monte carlo simulation
-parfor n = 1:N_packet
+for n = 1:N_packet
     % For parfor to be able to split
     photon = photon_data(n,:);
     A_rz_temp = zeros(Nr,Nz);
@@ -79,40 +79,65 @@ parfor n = 1:N_packet
     
     % While the packet is not dead
     while(1)
+        
         if(photon(1,9) == 0) % Step size zero
             % Set new step size
             photon(1,9) = -log(rand); %%%%% temporary line to verify scatter part
         end
         
         % Calculate the distancs d_b to boundary using 3.32
-        if(0) % Hits boundary? Use 3.33 to see if it will hit the boundary
+        if photon(1,6) < 0 
+            d_b = (0-photon(1,3))/photon(1,6);
+        else
+            d_b = inf;
+        end
+        if(d_b*mu_t <= photon(1,9)) % Hits boundary? Use 3.33 to see if it will hit the boundary
             % Move packet to boundary, similar to the line in else but
             % with d_b instead of s_/mu_t
+            photon(1,1:3) = photon(1,1:3) + d_b * photon(1,4:6);
             
             % Update step size, reduce s_ by d_b*mu_t
+            photon(1,9) = photon(1,9) - d_b*mu_t;
             
             % Transmit/reflect, calculate R with 3.36. Use rand to
             % determine if it will reflect or transmit 
+            alpha_i = acos(abs(photon(1,6)));
+            if alpha_i >= asin(1/n_rel)
+                R_i = 1;
+            else
+                alpha_t = asin(sin(photon(1,6))*n_rel);
+                R_i = ((sin(alpha_i-alpha_t))^2/(sin(alpha_i+alpha_t))^2 + (tan(alpha_i-alpha_t))^2/(tan(alpha_i+alpha_t))^2)/2;
+            end
             
-            
-            % If reflects back into medium do nothing. 
-            % If it transmits to z<0 record reflectance.
-            [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
-            alpha_packet = atan2(photon(1,2),photon(1,1));
-            alpha_packet(alpha_packet<0) = alpha_packet(alpha_packet<0) + 2*pi;
-            [~,i_alpha] = min(abs(alpha_packet-alpha));
-            R_ralpha_temp(i_r,i_alpha) = R_ralpha_temp(i_r,i_alpha) + photon(1,7);
-            
+            % If reflects back into medium reverse direction. 
+            if rand < R_i
+                photon(1,6) = -photon(1,6);
+            else
+                % If it transmits to z<0 record reflectance.
+                [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
+                alpha_packet = atan2(photon(1,2),photon(1,1));
+                alpha_packet(alpha_packet<0) = alpha_packet(alpha_packet<0) + 2*pi;
+                [~,i_alpha] = min(abs(alpha_packet-alpha));
+                R_ralpha_temp(i_r,i_alpha) = R_ralpha_temp(i_r,i_alpha) + photon(1,7);
+                
+                % Packet refracted
+                photon(1,4) = photon(1,4)*sin(alpha_t)/sin(alpha_i);
+                photon(1,5) = photon(1,5)*sin(alpha_t)/sin(alpha_i);
+                photon(1,6) = sign(photon(1,6))*cos(alpha_t); 
+                photon(1,8) = 1;
+                
+                
+            end
         else
             % Move packet to new position
             photon(1,1:3) = photon(1,1:3) + photon(1,9)/mu_t * photon(1,4:6);
             photon(1,9) = 0;
-            %%%%% Temporary placeholder for boundary part
-            if photon(1,3) < 0
-                photon(1,7) = 0; % Make photon weight zero  
-                photon(1,8) = 0; % and kill it
-            end
-            %%%%%
+%             %%%% Temporary placeholder for boundary part
+%             if photon(1,3) < 0
+%                 photon(1,7) = 0; % Make photon weight zero  
+%                 photon(1,8) = 0; % and kill it
+%             end
+%             %%%%
             
             % Absorb part of the weight
             [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
@@ -185,11 +210,12 @@ A = A/N_packet;
 R_alpha = sum(R_ralpha,1);
 R_r = sum(R_ralpha,2);
 R = sum(R_ralpha,[1,2]);
-A = sum(A_rz,[1,2]);
 R_ralpha = R_ralpha./(N_packet*Da'.*DOmega.*cos(alpha));
 R_alpha = R_alpha./(N_packet*DOmega);
 R_r = R_r./(N_packet*Da');
 R = R/N_packet;
+
+R = R*(1-((n_rel-1)/(n_rel+1))^2) + ((n_rel-1)/(n_rel+1))^2
 
 F_z = A_z / mu_a;
 
