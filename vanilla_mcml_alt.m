@@ -71,7 +71,7 @@ photon_data(:,6) = 1; % Propagating along positive z direction
 photon_data(:,7) = init_wt;
 tic
 %% Run the monte carlo simulation
-parfor n = 1:N_packet
+for n = 1:N_packet
     % For parfor to be able to split
     photon = photon_data(n,:);
     A_rz_temp = zeros(Nr,Nz);
@@ -91,13 +91,13 @@ parfor n = 1:N_packet
         else
             d_b = inf;
         end
-        if(d_b*mu_t <= photon(1,9)) % Hits boundary? Use 3.33 to see if it will hit the boundary
+        if(d_b*mu_s <= photon(1,9)) % Hits boundary? Use 3.33 to see if it will hit the boundary
             % Move packet to boundary, similar to the line in else but
             % with d_b instead of s_/mu_t
             photon(1,1:3) = photon(1,1:3) + d_b * photon(1,4:6);
             
             % Update step size, reduce s_ by d_b*mu_t
-            photon(1,9) = photon(1,9) - d_b*mu_t;
+            photon(1,9) = photon(1,9) - d_b*mu_s;
             
             % Transmit/reflect, calculate R with 3.36. Use rand to
             % determine if it will reflect or transmit 
@@ -131,13 +131,14 @@ parfor n = 1:N_packet
         else
             % Move packet to new position
             photon(1,1:3) = photon(1,1:3) + photon(1,9)/mu_s * photon(1,4:6);
-            photon(1,9) = 0;
             
             % Absorb part of the weight
             [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
             [~,i_z] = min(abs(photon(1,3)-z));
-            A_rz_temp(i_r,i_z) = A_rz_temp(i_r,i_z) + photon(1,7)*exp(-mu_a*s_/mu_s);
-            photon(1,7) = photon(1,7)*(1-exp(-mu_a*s_/mu_s));
+            A_rz_temp(i_r,i_z) = A_rz_temp(i_r,i_z) + photon(1,7)*exp(-mu_a*photon(1,9)/mu_s);
+            photon(1,7) = photon(1,7)*(1-exp(-mu_a*photon(1,9)/mu_s));
+            photon(1,9) = 0;
+
             
             % Scatter
             photon(1,10) = photon(1,10) + 1;
