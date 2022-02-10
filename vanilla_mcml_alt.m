@@ -135,8 +135,8 @@ for n = 1:N_packet
             % Absorb part of the weight
             [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
             [~,i_z] = min(abs(photon(1,3)-z));
-            A_rz_temp(i_r,i_z) = A_rz_temp(i_r,i_z) + photon(1,7)*exp(-mu_a*photon(1,9)/mu_s);
-            photon(1,7) = photon(1,7)*(1-exp(-mu_a*photon(1,9)/mu_s));
+            A_rz_temp(i_r,i_z) = A_rz_temp(i_r,i_z) + photon(1,7)*(1-exp(-mu_a*photon(1,9)/mu_s));
+            photon(1,7) = photon(1,7)*(exp(-mu_a*photon(1,9)/mu_s));
             photon(1,9) = 0;
 
             

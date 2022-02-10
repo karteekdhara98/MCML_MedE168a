@@ -71,7 +71,7 @@ photon_data(:,6) = 1; % Propagating along positive z direction
 photon_data(:,7) = init_wt;
 tic
 %% Run the monte carlo simulation
-parfor n = 1:N_packet
+for n = 1:N_packet
     % For parfor to be able to split
     photon = photon_data(n,:);
     A_rz_temp = zeros(Nr,Nz);
