@@ -11,23 +11,50 @@ clc
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Define global variables
-% Properties of incident light
-lambda      = 400e-7; % cm, Wavelength of incident light
-c           = 299792458e2; % cm/s, speed of light in vacuum
 
 % Scattering medium properties
 n_rel       = 1; % Relative refractive index
 mu_a        = 0.1; % 1/cm, absorption coefficient
 mu_s        = 100; % 1/cm, absorption coefficient
 g           = 0.9; % Scattering anisotropy
-mu_t        = mu_a + mu_s;
+
 mu_s_prime  = mu_s*(1-g);
-mu_t        = mu_a + mu_s;
-mu_t_prime  = mu_a + mu_s_prime;
+mu_t_prime  = mu_a + mu_s_prime; 
 a_prime     = mu_s_prime/mu_t_prime;
 D           = 1/3/(mu_t_prime);
 mu_eff      = sqrt(mu_a/D);
 l_t_prime   = 1/(mu_t_prime); % Transport mean free path
+
+
+R_r = mcml(n_rel,mu_a,mu_s,g,1e4,'pencil');
+
+R_eff = -1.440/n_rel^2+0.710/n_rel+0.668+0.0636*n_rel;
+C_R = (1+R_eff)/(1-R_eff);
+z_b = 2*C_R*D;
+rho_1 = sqrt(r.^2+l_t_prime^2);
+rho_2 = sqrt(r.^2+(l_t_prime+2*z_b)^2);
+dif_R_r = a_prime * l_t_prime*(1+mu_eff*rho_1).*exp(-mu_eff*rho_1)./(4*pi*rho_1.^3) + a_prime * (l_t_prime+4*D)*(1+mu_eff*rho_2).*exp(-mu_eff*rho_2)./(4*pi*rho_2.^3);
+
+figure;
+semilogy(r,R_r,'.'); hold on;
+semilogy(r,dif_R_r); xlabel('Radius r(cm)');
+ylabel('Diffuse Reflectance R_d(cm^{-2})');
+legend('A: Monte Carlo','D: Diffusion Theory');
+
+figure;
+plot(r,(dif_R_r'-R_r)./R_r); 
+xlabel('Radius r(cm)'); ylabel('Relative Error');
+legend('(D-A)/A','Location','southwest');
+
+
+
+function [R_r] = mcml(n_rel, mu_a, mu_s, g, N_packet, sourcetype)
+
+% Properties of incident light
+lambda      = 400e-7; % cm, Wavelength of incident light
+c           = 299792458e2; % cm/s, speed of light in vacuum
+
+mu_t        = mu_a + mu_s;
 
 % Output flags
 show_vis    = false; % Flag for visualization (plots/figures)
@@ -36,28 +63,27 @@ verbose     = false; % Flag for printing output
 %% Initialize parameters for monte carlo
 % Details of photon packets
 init_wt     = 1e0; % Initial weight of packet
-N_packet    = 1e5; % Number of photon packets
+% N_packet    = 1e5; % Number of photon packets
 th_wt       = 1e-4; % Weight threshold below which a photon packet is dead
 
 russ_m = 10; % Russian roulette parameter
 
-% Computational grid for recording output
+% Computational grid parameters for recording output
 dz          = 0.005;%10*lambda/10; % (cm) Grid size along z
 dr          = 0.005;%lambda/10; % (cm) Grid size along r
 dalpha      = pi/2; % Grid size along alpha (angle)
+Nz          = 1;
+Nr          = 100;
+Nalpha      = 1;
 
-% TBD: Define mesh
-Nz = 1;
-Nr = 100;
+% Define grid coordinates and areas
 z = ([0:Nz-1]+1/2)*dz;
 r = (([0:Nr-1]+1/2)+1/12./([0:Nr-1]+1/2))*dr;
-
-Nalpha = 1;
 alpha = ([0:Nalpha-1]+1/2)*dalpha + (1-dalpha*cot(dalpha/2)/2)*cot(([0:Nalpha-1]+1/2)*dalpha);
-
 Da = 2*pi*([0:Nr-1]+1/2)*dr^2;
 DOmega = 4*pi*sin(([0:Nalpha-1]+1/2)*dalpha)*sin(dalpha/2);
 
+% Define mesh
 A_rz = zeros(Nr,Nz);
 R_ralpha = zeros(Nr,Nalpha);
 
@@ -82,6 +108,28 @@ parfor n = 1:N_packet
     photon = photon_data(n,:);
     A_rz_temp = zeros(Nr,Nz);
     R_ralpha_temp = zeros(Nr,Nalpha);
+    
+    
+    
+    % Isotropic point source case
+    if strcmp(sourcetype,'isotropic')
+        
+        % Initial position at source locaion
+        photon(1,3) = z_prime;
+        
+        % Random initial direction for the photon
+        theta = acos(2*rand-1);
+        phi = 2*pi*rand;
+        
+        photon(1,4) = sin(theta)*cos(phi);
+        photon(1,5) = sin(theta)*sin(phi);
+        photon(1,6) = cos(theta);
+        
+    elseif strcmp(sourcetype,'pencil') 
+        % Do nothing, all parameters are initialized for pencil beam
+    else
+        % Do nothing
+    end
     
     % While the packet is not dead
     while(1)
@@ -166,14 +214,6 @@ parfor n = 1:N_packet
             end
             photon(1,4:6) = mu_prime;
             
-%             %%%%% temporary lines to verify scatter part
-%             figure(1); hold on;
-%             scatter3(photon(1,1),photon(1,2),photon(1,3)); 
-%             quiver3(photon(1,1),photon(1,2),photon(1,3),photon(1,4)/mu_t,photon(1,5)/mu_t,photon(1,6)/mu_t);
-%             drawnow;
-%             pause(0.01);
-%             %%%%%
-            
         end
         
         
@@ -201,11 +241,14 @@ end
 
 toc
 
+A_rz = A_rz *(1-((n_rel-1)/(n_rel+1))^2);
 A_z = sum(A_rz,1);
 A = sum(A_rz,[1,2]);
 A_rz = A_rz./(N_packet*Da'*dz);
 A_z = A_z/(N_packet*dz);
-A = (A/N_packet) *(1-((n_rel-1)/(n_rel+1))^2);
+A = (A/N_packet);
+
+F_z = A_z / mu_a;
 
 
 R_ralpha = R_ralpha*(1-((n_rel-1)/(n_rel+1))^2) + ((n_rel-1)/(n_rel+1))^2;
@@ -217,28 +260,11 @@ R_alpha = R_alpha./(N_packet*DOmega);
 R_r = R_r./(N_packet*Da');
 R = R/N_packet;
 
-R_diff = R;
-
-F_z = A_z / mu_a;
 
 
-R_eff = -1.440/n_rel^2+0.710/n_rel+0.668+0.0636*n_rel;
-C_R = (1+R_eff)/(1-R_eff);
-z_b = 2*C_R*D;
-rho_1 = sqrt(r.^2+l_t_prime^2);
-rho_2 = sqrt(r.^2+(l_t_prime+2*z_b)^2);
-dif_R_r = a_prime * l_t_prime*(1+mu_eff*rho_1).*exp(-mu_eff*rho_1)./(4*pi*rho_1.^3) + a_prime * (l_t_prime+4*D)*(1+mu_eff*rho_2).*exp(-mu_eff*rho_2)./(4*pi*rho_2.^3);
-
-figure;
-semilogy(r,R_r,'.');
-hold on;
-semilogy(r,dif_R_r);
+end
 
 
-% figure;
-% semilogy(z,F_z);
-% xlabel('z (cm)'); ylabel('Fluence'); 
-% hold on;
-% xline(l_t_prime,'--');
 
-% imagesc(log(A_rz));
+
+
