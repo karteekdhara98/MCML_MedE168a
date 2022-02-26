@@ -1,5 +1,6 @@
 % clear all
 close all
+clear all
 clc
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -18,37 +19,128 @@ mu_a        = 0.1; % 1/cm, absorption coefficient
 mu_s        = 100; % 1/cm, absorption coefficient
 g           = 0.9; % Scattering anisotropy
 
+N_packet    = 1e5;
+
+% Derived paramters
 mu_s_prime  = mu_s*(1-g);
 mu_t_prime  = mu_a + mu_s_prime; 
 a_prime     = mu_s_prime/mu_t_prime;
 D           = 1/3/(mu_t_prime);
 mu_eff      = sqrt(mu_a/D);
 l_t_prime   = 1/(mu_t_prime); % Transport mean free path
-
-
-R_r = mcml(n_rel,mu_a,mu_s,g,1e4,'pencil');
-
 R_eff = -1.440/n_rel^2+0.710/n_rel+0.668+0.0636*n_rel;
 C_R = (1+R_eff)/(1-R_eff);
 z_b = 2*C_R*D;
+
+%% Figure 5.6
+
+% MC
+[r,R_r_A] = mcml(n_rel,mu_a,mu_s,g,N_packet,'pencil',[]);
+% Diffusion theory
 rho_1 = sqrt(r.^2+l_t_prime^2);
 rho_2 = sqrt(r.^2+(l_t_prime+2*z_b)^2);
-dif_R_r = a_prime * l_t_prime*(1+mu_eff*rho_1).*exp(-mu_eff*rho_1)./(4*pi*rho_1.^3) + a_prime * (l_t_prime+4*D)*(1+mu_eff*rho_2).*exp(-mu_eff*rho_2)./(4*pi*rho_2.^3);
+R_r_D = a_prime * l_t_prime*(1+mu_eff*rho_1).*exp(-mu_eff*rho_1)./(4*pi*rho_1.^3) + a_prime * (l_t_prime+4*D)*(1+mu_eff*rho_2).*exp(-mu_eff*rho_2)./(4*pi*rho_2.^3);
 
 figure;
-semilogy(r,R_r,'.'); hold on;
-semilogy(r,dif_R_r); xlabel('Radius r(cm)');
+semilogy(r,R_r_A,'--'); hold on;
+semilogy(r,R_r_D); xlim([0 0.5]);
+xlabel('Radius r(cm)');
 ylabel('Diffuse Reflectance R_d(cm^{-2})');
 legend('A: Monte Carlo','D: Diffusion Theory');
 
 figure;
-plot(r,(dif_R_r'-R_r)./R_r); 
+plot(r,(R_r_D-R_r_A)./R_r_A); xlim([0 0.5]);
 xlabel('Radius r(cm)'); ylabel('Relative Error');
 legend('(D-A)/A','Location','southwest');
 
+%% Figure 5.7
+
+% mu_s_prime, g = 0 
+[r,R_r_B] = mcml(n_rel,mu_a,mu_s_prime,0,N_packet,'pencil',[]);
+
+figure;
+semilogy(r,R_r_A,'--'); hold on;
+semilogy(r,R_r_B); xlim([0 1]); xlabel('Radius r(cm)');
+ylabel('Diffuse Reflectance R_d(cm^{-2})');
+legend('A: Pencil beam, g=0.9','B: Pencil beam, g=0');
+
+figure;
+plot(r,(R_r_B-R_r_A)./R_r_A); xlim([0 1]);
+xlabel('Radius r(cm)'); ylabel('Relative Error');
+legend('(B-A)/A');
+
+%% Figure 5.8
+
+% mu_s_prime, g = 0, isotropic
+[r,R_r_C] = mcml(n_rel,mu_a,mu_s_prime,0,N_packet,'isotropic',l_t_prime);
+
+figure;
+semilogy(r,R_r_B,'--'); hold on;
+semilogy(r,R_r_C); xlim([0 1]); xlabel('Radius r(cm)');
+ylabel('Diffuse Reflectance R_d(cm^{-2})');
+legend('B: Pencil beam, g=0','C: Isotropic source, g=0');
+
+figure;
+plot(r,(R_r_C-R_r_B)./R_r_B); xlim([0 1]);
+xlabel('Radius r(cm)'); ylabel('Relative Error');
+legend('(C-B)/B');
+
+%% Figure 5.9
+
+figure;
+semilogy(r,R_r_C,'o'); hold on;
+semilogy(r,R_r_D); xlim([0 1]); xlabel('Radius r(cm)');
+ylabel('Diffuse Reflectance R_d(cm^{-2})');
+legend('C: Monte Carlo, g=0','D: Diffusion theory');
+
+figure;
+plot(r,(R_r_D-R_r_C)./R_r_C); xlim([0 1]);
+xlabel('Radius r(cm)'); ylabel('Relative Error');
+legend('(D-C)/C');
+
+%% Figure 5.10
+
+z_prime_1 = 0.1*l_t_prime;
+% mu_s_prime, g = 0, isotropic, z_prime = 0.1*l_t_prime
+[r,R_r_C_1] = mcml(n_rel,mu_a,mu_s_prime,0,N_packet,'isotropic',z_prime_1);
+% Diffusion theory
+rho_1 = sqrt(r.^2+z_prime_1^2);
+rho_2 = sqrt(r.^2+(z_prime_1+2*z_b)^2);
+R_r_D_1 = a_prime * z_prime_1*(1+mu_eff*rho_1).*exp(-mu_eff*rho_1)./(4*pi*rho_1.^3) + a_prime * (z_prime_1+4*D)*(1+mu_eff*rho_2).*exp(-mu_eff*rho_2)./(4*pi*rho_2.^3);
+
+figure;
+semilogy(r,R_r_C_1,'--'); hold on;
+semilogy(r,R_r_D_1); xlim([0 1]); xlabel('Radius r(cm)');
+ylabel('Diffuse Reflectance R_d(cm^{-2})');
+legend('Monte Carlo (0.1 l_t'')','Diffusion theory (0.1 l_t'')');
+
+z_prime_2 = 0.01*l_t_prime;
+% mu_s_prime, g = 0, isotropic, z_prime = 0.1*l_t_prime
+[r,R_r_C_2] = mcml(n_rel,mu_a,mu_s_prime,0,N_packet,'isotropic',z_prime_2);
+% Diffusion theory
+rho_1 = sqrt(r.^2+z_prime_2^2);
+rho_2 = sqrt(r.^2+(z_prime_2+2*z_b)^2);
+R_r_D_2 = a_prime * z_prime_2*(1+mu_eff*rho_1).*exp(-mu_eff*rho_1)./(4*pi*rho_1.^3) + a_prime * (z_prime_1+4*D)*(1+mu_eff*rho_2).*exp(-mu_eff*rho_2)./(4*pi*rho_2.^3);
+
+figure;
+semilogy(r,R_r_C_2,'--'); hold on;
+semilogy(r,R_r_D_2); xlim([0 1]); xlabel('Radius r(cm)');
+ylabel('Diffuse Reflectance R_d(cm^{-2})');
+legend('Monte Carlo (0.01 l_t'')','Diffusion theory (0.01 l_t'')');
+
+%% Figure 5.11
+
+% mu_s_prime, g = 0.9, isotropic
+[r,R_r_E] = mcml(n_rel,mu_a,mu_s,0.9,N_packet,'isotropic',l_t_prime);
+
+figure;
+semilogy(r,R_r_C,'o'); hold on;
+semilogy(r,R_r_E); xlim([0 1]); xlabel('Radius r(cm)');
+ylabel('Diffuse Reflectance R_d(cm^{-2})');
+legend('C: Isotropic source, g=0','E: Isotropic source, g=0.9');
 
 
-function [R_r] = mcml(n_rel, mu_a, mu_s, g, N_packet, sourcetype)
+function [r,R_r] = mcml(n_rel, mu_a, mu_s, g, N_packet, sourcetype, z_prime)
 
 % Properties of incident light
 lambda      = 400e-7; % cm, Wavelength of incident light
@@ -69,12 +161,13 @@ th_wt       = 1e-4; % Weight threshold below which a photon packet is dead
 russ_m = 10; % Russian roulette parameter
 
 % Computational grid parameters for recording output
-dz          = 0.005;%10*lambda/10; % (cm) Grid size along z
-dr          = 0.005;%lambda/10; % (cm) Grid size along r
-dalpha      = pi/2; % Grid size along alpha (angle)
 Nz          = 1;
 Nr          = 100;
 Nalpha      = 1;
+dz          = 0.005;%10*lambda/10; % (cm) Grid size along z
+dr          = 1/Nr;%0.01;%lambda/10; % (cm) Grid size along r
+dalpha      = pi/2; % Grid size along alpha (angle)
+
 
 % Define grid coordinates and areas
 z = ([0:Nz-1]+1/2)*dz;
@@ -260,7 +353,8 @@ R_alpha = R_alpha./(N_packet*DOmega);
 R_r = R_r./(N_packet*Da');
 R = R/N_packet;
 
-
+R_r = R_r(1:end-1);
+r = r(1:end-1)';
 
 end
 
