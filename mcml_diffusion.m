@@ -41,14 +41,14 @@ rho_1 = sqrt(r.^2+l_t_prime^2);
 rho_2 = sqrt(r.^2+(l_t_prime+2*z_b)^2);
 R_r_D = a_prime * l_t_prime*(1+mu_eff*rho_1).*exp(-mu_eff*rho_1)./(4*pi*rho_1.^3) + a_prime * (l_t_prime+4*D)*(1+mu_eff*rho_2).*exp(-mu_eff*rho_2)./(4*pi*rho_2.^3);
 
-figure;
+figure; subplot(2,1,1);
 semilogy(r,R_r_A,'--'); hold on;
 semilogy(r,R_r_D); xlim([0 0.5]);
 xlabel('Radius r(cm)');
 ylabel('Diffuse Reflectance R_d(cm^{-2})');
 legend('A: Monte Carlo','D: Diffusion Theory');
 
-figure;
+subplot(2,1,2); %figure;
 plot(r,(R_r_D-R_r_A)./R_r_A); xlim([0 0.5]);
 xlabel('Radius r(cm)'); ylabel('Relative Error');
 legend('(D-A)/A','Location','southwest');
@@ -58,13 +58,13 @@ legend('(D-A)/A','Location','southwest');
 % mu_s_prime, g = 0 
 [r,R_r_B] = mcml(n_rel,mu_a,mu_s_prime,0,N_packet,'pencil',[]);
 
-figure;
+figure; subplot(2,1,1);
 semilogy(r,R_r_A,'--'); hold on;
 semilogy(r,R_r_B); xlim([0 1]); xlabel('Radius r(cm)');
 ylabel('Diffuse Reflectance R_d(cm^{-2})');
 legend('A: Pencil beam, g=0.9','B: Pencil beam, g=0');
 
-figure;
+subplot(2,1,2); %figure;
 plot(r,(R_r_B-R_r_A)./R_r_A); xlim([0 1]);
 xlabel('Radius r(cm)'); ylabel('Relative Error');
 legend('(B-A)/A');
@@ -74,26 +74,26 @@ legend('(B-A)/A');
 % mu_s_prime, g = 0, isotropic
 [r,R_r_C] = mcml(n_rel,mu_a,mu_s_prime,0,N_packet,'isotropic',l_t_prime);
 
-figure;
+figure; subplot(2,1,1);
 semilogy(r,R_r_B,'--'); hold on;
 semilogy(r,R_r_C); xlim([0 1]); xlabel('Radius r(cm)');
 ylabel('Diffuse Reflectance R_d(cm^{-2})');
 legend('B: Pencil beam, g=0','C: Isotropic source, g=0');
 
-figure;
+subplot(2,1,2); %figure;
 plot(r,(R_r_C-R_r_B)./R_r_B); xlim([0 1]);
 xlabel('Radius r(cm)'); ylabel('Relative Error');
 legend('(C-B)/B');
 
 %% Figure 5.9
 
-figure;
+figure; subplot(2,1,1);
 semilogy(r,R_r_C,'o'); hold on;
 semilogy(r,R_r_D); xlim([0 1]); xlabel('Radius r(cm)');
 ylabel('Diffuse Reflectance R_d(cm^{-2})');
 legend('C: Monte Carlo, g=0','D: Diffusion theory');
 
-figure;
+subplot(2,1,2); %figure;
 plot(r,(R_r_D-R_r_C)./R_r_C); xlim([0 1]);
 xlabel('Radius r(cm)'); ylabel('Relative Error');
 legend('(D-C)/C');
@@ -108,9 +108,9 @@ rho_1 = sqrt(r.^2+z_prime_1^2);
 rho_2 = sqrt(r.^2+(z_prime_1+2*z_b)^2);
 R_r_D_1 = a_prime * z_prime_1*(1+mu_eff*rho_1).*exp(-mu_eff*rho_1)./(4*pi*rho_1.^3) + a_prime * (z_prime_1+4*D)*(1+mu_eff*rho_2).*exp(-mu_eff*rho_2)./(4*pi*rho_2.^3);
 
-figure;
+figure; subplot(2,1,1);
 semilogy(r,R_r_C_1,'--'); hold on;
-semilogy(r,R_r_D_1); xlim([0 1]); xlabel('Radius r(cm)');
+semilogy(r,R_r_D_1); xlim([0 0.5]); xlabel('Radius r(cm)');
 ylabel('Diffuse Reflectance R_d(cm^{-2})');
 legend('Monte Carlo (0.1 l_t'')','Diffusion theory (0.1 l_t'')');
 
@@ -122,9 +122,9 @@ rho_1 = sqrt(r.^2+z_prime_2^2);
 rho_2 = sqrt(r.^2+(z_prime_2+2*z_b)^2);
 R_r_D_2 = a_prime * z_prime_2*(1+mu_eff*rho_1).*exp(-mu_eff*rho_1)./(4*pi*rho_1.^3) + a_prime * (z_prime_1+4*D)*(1+mu_eff*rho_2).*exp(-mu_eff*rho_2)./(4*pi*rho_2.^3);
 
-figure;
+subplot(2,1,2); %figure;
 semilogy(r,R_r_C_2,'--'); hold on;
-semilogy(r,R_r_D_2); xlim([0 1]); xlabel('Radius r(cm)');
+semilogy(r,R_r_D_2); xlim([0 0.5]); xlabel('Radius r(cm)');
 ylabel('Diffuse Reflectance R_d(cm^{-2})');
 legend('Monte Carlo (0.01 l_t'')','Diffusion theory (0.01 l_t'')');
 
